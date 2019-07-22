@@ -26,28 +26,35 @@ router.post("/register", (req, res) => {
 
   Accounts.add(account)
     .then(success => {
-      console.log(success);
       res.status(201).json(success);
     })
     .catch(error => {
-      console.log(error);
       res.status(500).json(error);
     });
 });
 
 router.post("/sillyRegister", (req, res) => {
   const account = req.body;
-  account.password = sillyCrypt.hashSync(account.password, 10);
+  account.password = sillyCrypt.hash(account.password, 12);
 
   Accounts.add(account)
     .then(success => {
-      console.log(success);
       res.status(201).json(success);
     })
     .catch(error => {
-      console.log(error);
       res.status(500).json(error);
     });
+});
+
+router.post("/sillyLogin", authCheckpoint, (req, res, next) => {
+  try {
+    const account = req.account;
+    res.status(200).json({
+      message: `Welcome ${account.username}!`
+    });
+  } catch (error) {
+    next(new Error(error.message));
+  }
 });
 
 router.post("/login", authCheckpoint, (req, res, next) => {
@@ -67,7 +74,7 @@ function authCheckpoint(req, res, next) {
   Accounts.findByUsername({ username })
     .first()
     .then(account => {
-      if (!account || !bcrypt.compareSync(password, account.password)) {
+      if (!sillyCrypt.compare(password, account.password)) {
         res.status(401).json({ message: "Wrong credentials" });
       } else {
         req.account = account;
@@ -88,7 +95,6 @@ function restrictedAccess(req, res, next) {
       if (!account || !bcrypt.compareSync(password, account.password)) {
         res.status(401).json({ message: "Wrong credentials" });
       } else {
-        req.account = account;
         next();
       }
     })
@@ -97,21 +103,20 @@ function restrictedAccess(req, res, next) {
     });
 }
 
-// Faulty
+// Works!
 const sillyCrypt = {
-  hash(password, iterations) {
-    let result = password;
-    for (let i = 0; i < iterations; i++) {
-      result = md5(result);
+  hash(password, cycles = 10, salty = "") {
+    const salt = salty ? salty : new Date().getTime();
+    let hash = password + salt;
+    for (let i = 0; i < cycles; i++) {
+      hash = md5(hash);
     }
-    console.log(password);
-    return password;
+    return `${hash}$${cycles}$${salt}`;
   },
-  compare(password, hash, iterations) {
-    console.log(password);
-    return this.hash(password, iterations) === hash;
+  compare(password, storedPassword) {
+    const chain = storedPassword.split("$");
+    return this.hash(password, chain[1], chain[2]) === storedPassword;
   }
 };
-
 
 module.exports = router;
