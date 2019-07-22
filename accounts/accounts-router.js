@@ -1,5 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
+const md5 = require("md5");
 const Accounts = require("./accounts-model");
 const router = express.Router();
 
@@ -22,6 +23,21 @@ router.get("/users", restrictedAccess, (req, res) => {
 router.post("/register", (req, res) => {
   const account = req.body;
   account.password = bcrypt.hashSync(account.password, 12);
+
+  Accounts.add(account)
+    .then(success => {
+      console.log(success);
+      res.status(201).json(success);
+    })
+    .catch(error => {
+      console.log(error);
+      res.status(500).json(error);
+    });
+});
+
+router.post("/sillyRegister", (req, res) => {
+  const account = req.body;
+  account.password = sillyCrypt.hashSync(account.password, 10);
 
   Accounts.add(account)
     .then(success => {
@@ -80,5 +96,22 @@ function restrictedAccess(req, res, next) {
       next(new Error(error.message));
     });
 }
+
+// Faulty
+const sillyCrypt = {
+  hash(password, iterations) {
+    let result = password;
+    for (let i = 0; i < iterations; i++) {
+      result = md5(result);
+    }
+    console.log(password);
+    return password;
+  },
+  compare(password, hash, iterations) {
+    console.log(password);
+    return this.hash(password, iterations) === hash;
+  }
+};
+
 
 module.exports = router;
