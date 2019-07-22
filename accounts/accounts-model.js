@@ -1,19 +1,32 @@
-const db = require('../database/dbConfig');
+const db = require("../database/dbConfig");
 
 module.exports = {
   add,
-  find,
+  findById,
+  findByUsername,
   list
+};
+
+function add(account) {
+  return db("accounts")
+    .insert(account, "id")
+    .then(ids => {
+      const [id] = ids;
+      return findById(id);
+    });
 }
 
-function add() {
-
+function findByUsername(username) {
+  return db("accounts").where(username);
 }
 
-function find() {
-
+function findById(id) {
+  return db("accounts")
+    .where({ id })
+    .first();
 }
 
 function list() {
-  
+  return db("accounts")
+    .select("username");
 }
