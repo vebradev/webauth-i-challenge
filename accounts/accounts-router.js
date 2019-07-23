@@ -46,7 +46,7 @@ router.post("/sillyRegister", (req, res) => {
     });
 });
 
-router.post("/sillyLogin", authCheckpoint, (req, res, next) => {
+router.post("/sillyLogin", sillyAuth, (req, res, next) => {
   try {
     const account = req.account;
     res.status(200).json({
@@ -69,6 +69,24 @@ router.post("/login", authCheckpoint, (req, res, next) => {
 });
 
 function authCheckpoint(req, res, next) {
+  const { username, password } = req.body;
+
+  Accounts.findByUsername({ username })
+    .first()
+    .then(account => {
+      if (!bcrypt.compare(password, account.password)) {
+        res.status(401).json({ message: "Wrong credentials" });
+      } else {
+        req.account = account;
+        next();
+      }
+    })
+    .catch(error => {
+      next(new Error(error.message));
+    });
+}
+
+function sillyAuth(req, res, next) {
   const { username, password } = req.body;
 
   Accounts.findByUsername({ username })
