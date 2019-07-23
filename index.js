@@ -1,23 +1,34 @@
 const express = require("express");
+const helmet = require('helmet');
 const session = require("express-session");
-const server = express();
+const KnexSessionStore = require("connect-session-knex")(session);
+
 const AccountsRouter = require('./accounts/accounts-router');
 
-server.use(
-  session({
-    name: 'rozhes',
-    secret: 'nobody tosses a dwarf!',
-    cookie: {
-      maxAge: 1 * 24 * 60 * 60 * 1000,
-      secure: false, // only set cookies over https. Server will not send back a cookie over http.
-      httpOnly: true,
-    }, // 1 day in milliseconds
-    httpOnly: true, // don't let JS code access cookies. Browser extensions run JS code on your browser!
-    resave: false,
-    saveUninitialized: false,
-  })
-);
+const server = express();
+
+server.use(helmet());
 server.use(express.json());
+server.use(session({
+  name: 'rozes',
+  secret: 'From roses to blues so anyone is true',
+  cookie: {
+    maxAge: 1000 * 60 * 60,
+    secure: false,
+    httpOnly: false,
+  },
+  resave: false,
+  saveUninitialized: true,
+  store: new KnexSessionStore({
+    knex: require('./database/dbConfig.js'), // configured instance of knex
+    tablename: 'sessions', // table that will store sessions inside the db, name it anything you want
+    sidfieldname: 'sid', // column that will hold the session id, name it anything you want
+    createtable: true, // if the table does not exist, it will create it automatically
+    clearInterval: 1000 * 60 * 60, // time it takes to check for old sessions and remove them from the database to keep it clean and performant
+  }),
+}));
+
+
 server.use('/api/', AccountsRouter);
 
 server.get("/", (req, res) => {
