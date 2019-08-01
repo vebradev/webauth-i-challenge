@@ -5,7 +5,8 @@ const Accounts = require("./accounts-model");
 const router = express.Router();
 
 router.get("/", (req, res) => {
-  res.send("Shhh🤫hhhh, it works.");
+  const name = req.session.account.username;
+  res.send(`Shhhhh ${name} 🤫, it works.`);
 });
 
 router.get("/users", restrictedAccess, (req, res) => {
@@ -49,6 +50,7 @@ router.post("/sillyRegister", (req, res) => {
 router.post("/sillyLogin", sillyAuth, (req, res, next) => {
   try {
     const account = req.account;
+    req.session.name = account.username;
     res.status(200).json({
       message: `Welcome ${account.username}!`
     });
@@ -57,14 +59,16 @@ router.post("/sillyLogin", sillyAuth, (req, res, next) => {
   }
 });
 
-router.post("/login", authCheckpoint, (req, res, next) => {
+router.post("/login", authCheckpoint, (req, res) => {
   try {
-    const account = req.account;
+    const account = req.session.account;
     res.status(200).json({
       message: `Welcome ${account.username}!`
     });
   } catch (error) {
-    next(new Error(error.message));
+    res.status(500).json({
+      message: "You shall not pass!"
+    })
   }
 });
 
@@ -74,11 +78,11 @@ function authCheckpoint(req, res, next) {
   Accounts.findByUsername({ username })
     .first()
     .then(account => {
-      if (!bcrypt.compare(password, account.password)) {
-        res.status(401).json({ message: "Wrong credentials" });
-      } else {
-        req.account = account;
+      if (account && bcrypt.compareSync(password, account.password)) {
+        req.session.account = account;
         next();
+      } else {
+        res.status(401).json({ message: 'You shall not pass!' });
       }
     })
     .catch(error => {
@@ -105,20 +109,11 @@ function sillyAuth(req, res, next) {
 }
 
 function restrictedAccess(req, res, next) {
-  const { username, password } = req.headers;
-
-  Accounts.findByUsername({ username })
-    .first()
-    .then(account => {
-      if (!account || !bcrypt.compareSync(password, account.password)) {
-        res.status(401).json({ message: "Wrong credentials" });
-      } else {
-        next();
-      }
-    })
-    .catch(error => {
-      next(new Error(error.message));
-    });
+  if (req.session && req.session.account) {
+    next();
+  } else {
+    res.status(400).json({ message: "You shall not pass!" });
+  }
 }
 
 // Works!
